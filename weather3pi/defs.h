@@ -4,6 +4,7 @@
 typedef enum currentModule{
     weather = 0,
     news,
+    count,
 
 };
 

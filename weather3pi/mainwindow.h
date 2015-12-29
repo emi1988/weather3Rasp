@@ -21,14 +21,15 @@ class MainWindow : public QMainWindow
 public:
     explicit MainWindow(QWidget *parent = 0);
     void startRequest(QUrl url);
-    void parseXML(QByteArray receivedXML);
+
 
     ~MainWindow();
 
 private:
     Ui::MainWindow *ui;
     void generateLabels();
-    void parseNews();
+    void parseXML(QByteArray receivedXML);
+    void parseNews(QByteArray receivedXML);
 
     QList<QList<QLabel*>* > dayList;
 
@@ -51,7 +52,7 @@ private slots:
     void httpFinished();
     void timerFinished();
     //void httpReadyRead();
-    void on_pushButtonStart_clicked();
+    //void on_pushButtonStart_clicked();
 
 
 };
