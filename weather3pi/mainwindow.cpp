@@ -15,7 +15,7 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
     ui->centralWidget->setStyleSheet("background-color:black;");
-    //ui->textEditDates->setStyleSheet("QLabel {font-size: 10pt; color: white }");
+    //ui->textEditDates->setStyleSheet("QLabel {font-size: 14pt; color: white }");
 
     generateLabels();
 
@@ -24,7 +24,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
     QTimer *timer = new QTimer(this);
     connect(timer, SIGNAL(timeout()), this, SLOT(timerFinished()));
-    timer->start(5000);
+    timer->start(4000);
 }
 
 void MainWindow::startRequest(QUrl url)
@@ -250,7 +250,7 @@ void MainWindow::parseXML(QByteArray receivedXML)
 
         qDebug()<< QString::number(maxDayTemp);
         // QString curentDayStringRich = weekday[currentDateTime.dayOfWeek()] + "<br>" + "Vormittag: " + weatherText11 + "<br>" + "Nachmittag: " + weatherText17 +  "<br> Max: <b>" + QString::number(maxDayTemp) + "°C</b><br> Min: <b>" +  QString::number(minDayTemp)+ "°C</b>";
-        QString curentDayStringRich = weekday[currentDateTime.dayOfWeek()] + "<br>" + "Niederschlag:<b> "+ rainProbability + "%</b>" "<br> Max: <b>" + QString::number(maxDayTemp) + QString::fromUtf8("°") +  "C</b><br> Min: <b>" +  QString::number(minDayTemp)+ QString::fromUtf8("°") +"C</b>";
+        QString curentDayStringRich ="<b>" + weekday[currentDateTime.dayOfWeek()] + "</b>" + "<br>" + "Niederschlag:<b> "+ rainProbability + "%</b>" "<br> Max: <b>" + QString::number(maxDayTemp) + QString::fromUtf8("°") +  "C</b><br> Min: <b>" +  QString::number(minDayTemp)+ QString::fromUtf8("°") +"C</b>";
 
 
         labelList.at(labelCounter)->setText(curentDayStringRich);
@@ -543,7 +543,7 @@ void MainWindow::parseNews(QByteArray receivedXML)
         QString newsTitle = currentNewsElement.firstChildElement("title").text();
 
         QLabel *tempLabel = new QLabel(this);
-        tempLabel->setStyleSheet("QLabel { color: white; font-weight: bold}");
+        tempLabel->setStyleSheet("QLabel { color: white; font-weight: bold; font-size: 14pt }");
         tempLabel->setTextFormat(Qt::RichText);
 
         tempLabel->setText(newsTitle);
@@ -554,8 +554,9 @@ void MainWindow::parseNews(QByteArray receivedXML)
 
         counter ++;
         QLabel *tempLabel2 = new QLabel(this);
-        tempLabel2->setStyleSheet("QLabel { color: white }");
+        tempLabel2->setStyleSheet("QLabel { color: white; font-size: 10pt }");
         tempLabel2->setTextFormat(Qt::RichText);
+        tempLabel2->setWordWrap(true);
 
         tempLabel2->setText(newsContent);
 
@@ -585,7 +586,7 @@ void MainWindow::parseNews(QByteArray receivedXML)
       currentNewsElement =  currentNewsElement.nextSiblingElement("item");
       counter ++;
 
-      if(counter > 7)
+      if(counter > 9)
       {
           break;
       }
