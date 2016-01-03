@@ -8,6 +8,7 @@
 #include <QDate>
 #include <QLabel>
 #include <QFile>
+#include <QTime>
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -17,14 +18,22 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->centralWidget->setStyleSheet("background-color:black;");
     //ui->textEditDates->setStyleSheet("QLabel {font-size: 14pt; color: white }");
 
+    ui->labelTime->setStyleSheet("QLabel { color: white; font-weight: bold; font-size: 40pt }");
+    ui->labelTime->setTextFormat(Qt::RichText);
+    ui->labelTime->setFont(QFont("Comic Sans MS"));
+
     generateLabels();
 
     currentModuleRefresh = weather;
     waitForRefresh = false;
 
-    QTimer *timer = new QTimer(this);
-    connect(timer, SIGNAL(timeout()), this, SLOT(timerFinished()));
-    timer->start(4000);
+    QTimer *timerHttp = new QTimer(this);
+    connect(timerHttp, SIGNAL(timeout()), this, SLOT(timerHttpFinished()));
+    timerHttp->start(4000);
+
+    QTimer *timerTime = new QTimer(this);
+    connect(timerTime, SIGNAL(timeout()), this, SLOT(timerTimeFinished()));
+    timerTime->start(5000);
 }
 
 void MainWindow::startRequest(QUrl url)
@@ -33,6 +42,10 @@ void MainWindow::startRequest(QUrl url)
 
     connect(reply, SIGNAL(finished()), this , SLOT(httpFinished()));
 
+}
+MainWindow::~MainWindow()
+{
+    delete ui;
 }
 
 /*alles anzeigen
@@ -250,7 +263,11 @@ void MainWindow::parseXML(QByteArray receivedXML)
 
         qDebug()<< QString::number(maxDayTemp);
         // QString curentDayStringRich = weekday[currentDateTime.dayOfWeek()] + "<br>" + "Vormittag: " + weatherText11 + "<br>" + "Nachmittag: " + weatherText17 +  "<br> Max: <b>" + QString::number(maxDayTemp) + "°C</b><br> Min: <b>" +  QString::number(minDayTemp)+ "°C</b>";
-        QString curentDayStringRich ="<b>" + weekday[currentDateTime.dayOfWeek()] + "</b>" + "<br>" + "Niederschlag:<b> "+ rainProbability + "%</b>" "<br> Max: <b>" + QString::number(maxDayTemp) + QString::fromUtf8("°") +  "C</b><br> Min: <b>" +  QString::number(minDayTemp)+ QString::fromUtf8("°") +"C</b>";
+        QString curentDayStringRich ="<b>" + weekday[currentDateTime.dayOfWeek()] + "</b>" + "<br>" ;
+        //curentDayStringRich.append("Niederschlag:<b> "+ rainProbability + "%</b>" "<br> Max: <b>" + QString::number(maxDayTemp) + QString::fromUtf8("°") +  "C</b><br> Min: <b>" +  QString::number(minDayTemp)+ QString::fromUtf8("°") +"C</b>");
+        curentDayStringRich.append("<b> "+ rainProbability + "%</b>");
+        curentDayStringRich.append("<br> <b>" + QString::number(minDayTemp) + QString::fromUtf8("°") +"C</b>");
+        curentDayStringRich.append("-> <b>" + QString::number(maxDayTemp) + QString::fromUtf8("°") + "C</b>");
 
 
         labelList.at(labelCounter)->setText(curentDayStringRich);
@@ -280,10 +297,7 @@ void MainWindow::parseXML(QByteArray receivedXML)
 }
 
 
-MainWindow::~MainWindow()
-{
-    delete ui;
-}
+
 
 void MainWindow::generateLabels()
 {
@@ -439,10 +453,6 @@ void MainWindow::generateLabels()
     //    ui->gridLayout->addWidget(day2Labels.at(0));
 }
 
-void MainWindow::downloadFile()
-{
-
-}
 
 void MainWindow::httpFinished(){
 
@@ -488,7 +498,7 @@ void MainWindow::on_pushButtonStart_clicked()
     startRequest(url);
 }
 */
-void MainWindow::timerFinished()
+void MainWindow::timerHttpFinished()
 {
 
     if (waitForRefresh == false)
@@ -557,6 +567,7 @@ void MainWindow::parseNews(QByteArray receivedXML)
         tempLabel2->setStyleSheet("QLabel { color: white; font-size: 10pt }");
         tempLabel2->setTextFormat(Qt::RichText);
         tempLabel2->setWordWrap(true);
+        tempLabel2->setFont(QFont("Comic Sans MS",10));
 
         tempLabel2->setText(newsContent);
 
@@ -590,6 +601,23 @@ void MainWindow::parseNews(QByteArray receivedXML)
       {
           break;
       }
-   }
+    }
+}
+
+void MainWindow::timerTimeFinished()
+{
+    QTime tempCurrentTime =  QTime::currentTime();
+
+    ui->labelTime->setText(QString::number(tempCurrentTime.hour()) + ":" );
+    if(tempCurrentTime.second() < 10)
+    {
+            ui->labelTime->setText(ui->labelTime->text() + "0"+ QString::number(tempCurrentTime.minute()));
+
+    }
+    else
+    {
+            ui->labelTime->setText(ui->labelTime->text() +  QString::number(tempCurrentTime.minute()));
+
+    }
 }
 

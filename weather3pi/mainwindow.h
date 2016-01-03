@@ -48,9 +48,10 @@ private:
     //enum weekDays { Montag, Dienstag , Mittwoch, Donnerstag, Freitag, Samstag, Sonntag };
 
 private slots:
-    void downloadFile();
+
     void httpFinished();
-    void timerFinished();
+    void timerTimeFinished();
+    void timerHttpFinished();
     //void httpReadyRead();
     //void on_pushButtonStart_clicked();
 
