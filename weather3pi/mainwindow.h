@@ -28,30 +28,42 @@ public:
 private:
     Ui::MainWindow *ui;
     void generateLabels();
-    void parseXML(QByteArray receivedXML);
+    void parseWeather(QByteArray receivedXML);
     void parseNews(QByteArray receivedXML);
+    void showImages();
+    void readIniFile();
+    void readImageFiles();
 
-    QList<QList<QLabel*>* > dayList;
+    //QList<QList<QLabel*>* > dayList;
 
-    QList<QLabel *> labelList;
+    QList<QLabel *> m_labelListWeather;
+    QList<QLabel *> m_labelListNews;
 
-    QList<QLabel *> day1Labels;
-    QList<QLabel *> day2Labels;
-    QList<QLabel *> day3Labels;
+    //QList<QLabel *> day1Labels;
+    //QList<QLabel *> day2Labels;
+    //QList<QLabel *> day3Labels;
 
-    QNetworkAccessManager networkAccesManager;
-    QNetworkReply *reply;
+    QNetworkAccessManager m_networkAccesManager;
+    QNetworkReply *m_reply;
 
-    int currentModuleRefresh;
-    bool waitForRefresh;
+    QHash<QString, QString> m_settings;
+    QStringList m_picturePaths;
+    int m_currentPicCounter;
 
-    //enum weekDays { Montag, Dienstag , Mittwoch, Donnerstag, Freitag, Samstag, Sonntag };
+    int m_currentHttpModule;
+    bool m_waitForRefresh;
+    QStringList m_httpModules;
+
+    int m_newsUrlCounter;
+    int m_newsPositionCounter;
+
 
 private slots:
 
     void httpFinished();
     void timerTimeFinished();
     void timerHttpFinished();
+    void timerPicturesFinished();
     //void httpReadyRead();
     //void on_pushButtonStart_clicked();
 

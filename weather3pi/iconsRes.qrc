@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/i">
+        <file>icons/frame2.png</file>
+    </qresource>
+</RCC>

@@ -14,6 +14,8 @@ MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
 {
+    readIniFile();
+
     ui->setupUi(this);
     ui->centralWidget->setStyleSheet("background-color:black;");
     //ui->textEditDates->setStyleSheet("QLabel {font-size: 14pt; color: white }");
@@ -22,25 +24,70 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->labelTime->setTextFormat(Qt::RichText);
     ui->labelTime->setFont(QFont("Comic Sans MS"));
 
+    ui->labelPicture->setStyleSheet("QLabel { color: white; font-weight: bold; font-size: 20pt }");
+
     generateLabels();
 
-    currentModuleRefresh = weather;
-    waitForRefresh = false;
+    //set the httpModules which are set in the settings
+    if(m_settings.value("uiWeather").compare("1")== 0)
+    {
+        m_httpModules.append("weather");
+    }
+    if(m_settings.value("uiNews").compare("1")== 0)
+    {
+        //check if at least one (respectively the first news-url) is set
+        if(m_settings.contains("news0"))
+        {
+            m_httpModules.append("news");
+        }
+    }
 
-    QTimer *timerHttp = new QTimer(this);
-    connect(timerHttp, SIGNAL(timeout()), this, SLOT(timerHttpFinished()));
-    timerHttp->start(4000);
+    m_currentHttpModule = 0;
+    m_waitForRefresh = false;
 
-    QTimer *timerTime = new QTimer(this);
-    connect(timerTime, SIGNAL(timeout()), this, SLOT(timerTimeFinished()));
-    timerTime->start(5000);
+    m_newsPositionCounter = 0;
+    m_newsUrlCounter = 0;
+
+    //set the timers for the activated modules
+
+    if(m_httpModules.size() > 0)
+    {
+        QTimer *timerHttp = new QTimer(this);
+        connect(timerHttp, SIGNAL(timeout()), this, SLOT(timerHttpFinished()));
+        timerHttp->start(m_settings.value("httpRefreshTime").toInt());
+    }
+
+    if(m_settings.value("uiTime").compare("1")== 0)
+    {
+        QTimer *timerTimer = new QTimer(this);
+        connect(timerTimer, SIGNAL(timeout()), this, SLOT(timerTimeFinished()));
+        timerTimer->start(1000);
+    }
+    else
+    {
+        ui->gridLayoutTime->removeWidget(ui->labelTime);
+    }
+
+    if(m_settings.value("uiImages").compare("1")== 0)
+    {
+        readImageFiles();
+
+        //check if there are pictures in the specified path
+        if(m_picturePaths.size() >0)
+        {
+            QTimer *imagesTimer = new QTimer(this);
+            connect(imagesTimer, SIGNAL(timeout()), this, SLOT(timerPicturesFinished()));
+            imagesTimer->start(m_settings.value("slideShowTime").toInt());
+        }
+
+    }
 }
 
 void MainWindow::startRequest(QUrl url)
 {
-    reply = networkAccesManager.get(QNetworkRequest(url));
+    m_reply = m_networkAccesManager.get(QNetworkRequest(url));
 
-    connect(reply, SIGNAL(finished()), this , SLOT(httpFinished()));
+    connect(m_reply, SIGNAL(finished()), this , SLOT(httpFinished()));
 
 }
 MainWindow::~MainWindow()
@@ -48,7 +95,7 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-/*alles anzeigen
+/*show all
 void MainWindow::parseXML(QByteArray receivedXML)
 {
 
@@ -141,7 +188,7 @@ void MainWindow::parseXML(QByteArray receivedXML)
 }
 */
 
-void MainWindow::parseXML(QByteArray receivedXML)
+void MainWindow::parseWeather(QByteArray receivedXML)
 {
 
     QDomDocument domDoc;
@@ -152,13 +199,13 @@ void MainWindow::parseXML(QByteArray receivedXML)
 
     if(citytElement.isNull())
     {
-      //  ui->textEditDates->append("error");
+        //  ui->textEditDates->append("error");
     }
     QDomElement forecastElement = citytElement.namedItem("forecast").toElement();
 
     if(forecastElement.isNull())
     {
-       // ui->textEditDates->append("error");
+        // ui->textEditDates->append("error");
     }
 
     QString weekday[] = {"", "Montag", "Dienstag" , "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"};
@@ -179,11 +226,6 @@ void MainWindow::parseXML(QByteArray receivedXML)
 
         //get the rain probability
         QString rainProbability = currentDateElement.firstChildElement("pc").text();
-
-
-        //set the weekday
-        // labelList.at(labelCounter)->setText(weekday[currentDateTime.dayOfWeek()]);
-        //labelCounter++;
 
         //go through all the time-elements in one day
 
@@ -226,16 +268,13 @@ void MainWindow::parseXML(QByteArray receivedXML)
                 weatherState17 = currentWeatherState;
             }
 
-
             //get the max temp
             QString currentMaxTemp = currentTimeElement.firstChildElement("tx").text();
-
 
             if((counter == 0) |(maxDayTemp < currentMaxTemp.toDouble()))
             {
                 maxDayTemp = currentMaxTemp.toDouble();
             }
-
 
             //get the min temp
             QString currentMinTemp = currentTimeElement.firstChildElement("tn").text();
@@ -245,21 +284,11 @@ void MainWindow::parseXML(QByteArray receivedXML)
                 minDayTemp = currentMinTemp.toDouble();
             }
 
-            //set the time + weather text
-            // labelList.at(labelCounter)->setText(currentTimeString + "\n" + currentWeatherTxtString + "\n Max:" + currentMaxTempString + "\n Min:" + currentMinTempString);
-
-            //  collectedDayStringRich = collectedDayStringRich + "<hr>" + currentTimeString + "<br>" + currentWeatherTxtString + "<br> Max:<b>" + currentMaxTempString + "°C</b><br> Min:<b>" + currentMinTempString + "°C</b><br><br>";
-
-            // labelList.at(labelCounter)->setWordWrap(true);
-            //labelCounter++;
-
             //get the next time element
             currentTimeElement = currentTimeElement.nextSiblingElement("time");
 
             counter ++;
         }
-
-        // QString maxTempString = QString(maxDayTemp);
 
         qDebug()<< QString::number(maxDayTemp);
         // QString curentDayStringRich = weekday[currentDateTime.dayOfWeek()] + "<br>" + "Vormittag: " + weatherText11 + "<br>" + "Nachmittag: " + weatherText17 +  "<br> Max: <b>" + QString::number(maxDayTemp) + "°C</b><br> Min: <b>" +  QString::number(minDayTemp)+ "°C</b>";
@@ -270,23 +299,23 @@ void MainWindow::parseXML(QByteArray receivedXML)
         curentDayStringRich.append("-> <b>" + QString::number(maxDayTemp) + QString::fromUtf8("°") + "C</b>");
 
 
-        labelList.at(labelCounter)->setText(curentDayStringRich);
+        m_labelListWeather.at(labelCounter)->setText(curentDayStringRich);
         labelCounter++;
 
         //set the text over the icons
-        labelList.at(labelCounter)->setText("Vormittag:<br>" + weatherText11);
+        m_labelListWeather.at(labelCounter)->setText("Vormittag:<br>" + weatherText11);
         labelCounter++;
 
-        labelList.at(labelCounter)->setText("Nachmittag:<br>" + weatherText17);
+        m_labelListWeather.at(labelCounter)->setText("Nachmittag:<br>" + weatherText17);
         labelCounter++;
 
-        QFile *testFile =new QFile("://icons/d_0_L.png");
-        bool test = testFile->exists();
+        //QFile *testFile =new QFile("://icons/d_0_L.png");
+        //bool test = testFile->exists();
 
         //set the icons
-        labelList.at(labelCounter)->setPixmap(QPixmap(":/d/icons/d_" + weatherState11 + "_L.png").scaled(QSize(60,60),Qt::KeepAspectRatio));
+        m_labelListWeather.at(labelCounter)->setPixmap(QPixmap(":/d/icons/d_" + weatherState11 + "_L.png").scaled(QSize(60,60),Qt::KeepAspectRatio));
         labelCounter++;
-        labelList.at(labelCounter)->setPixmap(QPixmap(":/n/icons/n_" + weatherState17 + "_L.png").scaled(QSize(60,60),Qt::KeepAspectRatio));
+        m_labelListWeather.at(labelCounter)->setPixmap(QPixmap(":/n/icons/n_" + weatherState17 + "_L.png").scaled(QSize(60,60),Qt::KeepAspectRatio));
 
         labelCounter++;
         //get the next element
@@ -297,196 +326,136 @@ void MainWindow::parseXML(QByteArray receivedXML)
 }
 
 
-
-
 void MainWindow::generateLabels()
 {
 
+    //labels for the weather
     int Cols = 3;
     int Rows = 5; //1 row for first text, 2 for second text and 2 row for the icons
 
-    for (int lableCounter = 0; lableCounter < Cols*Rows; ++lableCounter)
+    for (int labelCounter = 0; labelCounter < Cols*Rows; ++labelCounter)
     {
-        labelList << new QLabel(this);
-
+        m_labelListWeather << new QLabel(this);
     }
-
 
     int position =0;
-
-    /* for (int dayCounter = 0; dayCounter < 3; ++dayCounter)
-    {
-
-        ui->gridLayout->addWidget(labelList.at(position),0,dayCounter*2, 1, 1);
-        // labelList.at(position)->setFrameStyle(QFrame::Box | QFrame::Plain);
-        //labelList.at(position)->setFrameStyle(QFrame::Panel | QFrame::Plain);
-        //labelList.at(position)->setLineWidth(2);
-        labelList.at(position)->setTextFormat(Qt::RichText);
-        labelList.at(position)->setStyleSheet("QLabel { color: white }");
-        position++;
-
-        //set the icons
-        ui->gridLayout->addWidget(labelList.at(position),1,dayCounter*2, 1, 1);
-        position++;
-        ui->gridLayout->addWidget(labelList.at(position),1,dayCounter+1, 1, 1);
-       //test: labelList.at(position)->setPixmap(QPixmap(":/icons/d_0_L.png"));
-
-
-        position++;
-
-    }
-    */
-
+    // add the weather labels into the grid widget
     for (int dayCounter = 0; dayCounter < 3; ++dayCounter)
     {
 
-        ui->gridLayoutWeather->addWidget(labelList.at(position),0,dayCounter, 1, 1);
-        // labelList.at(position)->setFrameStyle(QFrame::Box | QFrame::Plain);
-        //labelList.at(position)->setFrameStyle(QFrame::Panel | QFrame::Plain);
-        //labelList.at(position)->setLineWidth(2);
-        labelList.at(position)->setTextFormat(Qt::RichText);
-        labelList.at(position)->setStyleSheet("QLabel {font-size: 12pt; color: white }");
+        ui->gridLayoutWeather->addWidget(m_labelListWeather.at(position),0,dayCounter, 1, 1);
+
+        m_labelListWeather.at(position)->setTextFormat(Qt::RichText);
+        m_labelListWeather.at(position)->setStyleSheet("QLabel {font-size: 12pt; color: white }");
         position++;
 
         QGridLayout *iconLayout = new QGridLayout();
         ui->gridLayoutWeather->addLayout(iconLayout,1,dayCounter,1,1);
 
         //set text for "Vormittag" and "Nachmittag"
-        iconLayout->addWidget(labelList.at(position),0,0, 1, 1);
-        labelList.at(position)->setTextFormat(Qt::RichText);
-        labelList.at(position)->setStyleSheet("QLabel { color: white }");
+        iconLayout->addWidget(m_labelListWeather.at(position),0,0, 1, 1);
+        m_labelListWeather.at(position)->setTextFormat(Qt::RichText);
+        m_labelListWeather.at(position)->setStyleSheet("QLabel { color: white }");
         position++;
-        iconLayout->addWidget(labelList.at(position),0,1, 1, 1);
-        labelList.at(position)->setTextFormat(Qt::RichText);
-        labelList.at(position)->setStyleSheet("QLabel { color: white }");
+        iconLayout->addWidget(m_labelListWeather.at(position),0,1, 1, 1);
+        m_labelListWeather.at(position)->setTextFormat(Qt::RichText);
+        m_labelListWeather.at(position)->setStyleSheet("QLabel { color: white }");
         position++;
 
         //set the icons
-        iconLayout->addWidget(labelList.at(position),1,0, 1, 1);
-        //ui->gridLayout->addWidget(labelList.at(position),1,dayCounter, 1, 1);
+        iconLayout->addWidget(m_labelListWeather.at(position),1,0, 1, 1);
         position++;
 
-        iconLayout->addWidget(labelList.at(position),1,1, 1, 1);
-
-        //ui->gridLayout->addWidget(labelList.at(position),1,dayCounter, 1, 1);
-        //test: labelList.at(position)->setPixmap(QPixmap(":/icons/d_0_L.png"));
-
+        iconLayout->addWidget(m_labelListWeather.at(position),1,1, 1, 1);
 
         position++;
 
     }
 
 
-    //    for (int rowCounter = 0; rowCounter < amountRows; ++rowCounter)
-    //    {
-    //        for (int dayCounter = 0; dayCounter < amountDays; ++dayCounter)
-    //        {
-    //            ui->gridLayout->addWidget(labelList.at(position),rowCounter,dayCounter, 1, 1);
-    //            position++;
-    //        }
+    //labels for the news
+    int amountNews = m_settings.value("newsAmount").toInt();
 
-    //    }
+    int counter = 0;
+    while (true)
+    {
+        QString currentNewsAdressKey = "news" + QString::number(counter);
 
-    //ui->gridLayout->addWidget(dayList.at(0)->at(0),0,0, 1, 1);
+        if(m_settings.contains(currentNewsAdressKey)== true)
+        {
+            counter++;
+        }
+        else
+        {
+            break;
+        }
 
-    //    for (int lableCounter = 0; lableCounter < 5; ++lableCounter)
-    //    {
-    //        labelList << new QLabel(this);
-    //    }
+    }
 
-    //    for (int dayCounter = 0; dayCounter < 2; ++dayCounter)
-    //    {
-    //       //FEHLER
-    //        dayList.append(&labelList);
-    //    }
-
-    //    //QList<QLabel*> *currentList = dayList.at(0);
-
-    //    dayList.at(0)->at(0)->setText("hallo10");
-    //    dayList.at(0)->at(1)->setText("hallo11");
-    //    dayList.at(0)->at(2)->setText("hallo12");
-    //    dayList.at(0)->at(3)->setText("hallo13");
-    //    dayList.at(0)->at(4)->setText("hallo14");
-
-    //    dayList.at(1)->at(0)->setText("hallo20");
-    //    dayList.at(1)->at(1)->setText("hallo21");
-    //    dayList.at(1)->at(2)->setText("hallo22");
-    //    dayList.at(1)->at(3)->setText("hallo23");
-    //    dayList.at(1)->at(4)->setText("hallo24");
+    int amountUrls = counter;
 
 
+    //we need 2 lines per news (title +text)
+    for(int labelCounter=0; labelCounter < amountNews*amountUrls*2; labelCounter++)
+    {
+        //generate new label
+        m_labelListNews << new QLabel(this);
+        //add label to the grid-layout
+        ui->gridLayoutNews->addWidget(m_labelListNews.at(labelCounter),labelCounter,0,1,1);
 
+        //apply the styles to the labels
 
-    //    for (int dayCounter = 0; dayCounter < 5; ++dayCounter)
-    //    {
-    //       // lableList << QList<QLabel>();
-    //        //lableList.append(QList<QLabel*>());
-    //        lableList.append(new QList<QLabel*>());
-
-    //        for (int lableCounter = 0; lableCounter < 5; ++lableCounter)
-    //        {
-
-    //            lableList.at(dayCounter) = new QLabel();
-
-    //            // lableList.at(dayCounter).at(lableCounter) << new QLabel(this);
-
-    //           // QLabel curentLabel << new QLabel(this);
-    //            //lableList.at(dayCounter).append(curentLabel);
-    //           // QLabel myLabel = new QLabel();
-    //           // lableList[dayCounter].append(myLabel);
-
-    //           // lableList.at(dayCounter) << new QLabel(this);
-    //            //lableList.at(dayCounter).at(lableCounter) << new QLabel(this);
-    //            //lableList.[dayCounter].[lableCounter] << new QLabel(this);
-
-    ////            day1Labels << new QLabel(this);
-    ////            day2Labels << new QLabel(this);
-    ////            day3Labels << new QLabel(this);
-    //        }
-    //    }
-
-    //    day1Labels.at(1)->setText("hallo test");
-    //    day2Labels.at(0)->setText("hallo 56464");
-
-
-    //    ui->gridLayout->addWidget(day1Labels.at(1));
-    //    ui->gridLayout->addWidget(day2Labels.at(0));
+        if(labelCounter % 2 ==0)
+        {
+            //label is a title
+            m_labelListNews.at(labelCounter)->setStyleSheet("QLabel { color: white; font-weight: bold; font-size: 14pt }");
+            m_labelListNews.at(labelCounter)->setTextFormat(Qt::RichText);
+            m_labelListNews.at(labelCounter)->setFont(QFont("Comic Sans MS",14));
+        }
+        else
+        {
+            //label is a news text
+            m_labelListNews.at(labelCounter)->setStyleSheet("QLabel { color: white; font-size: 10pt }");
+            m_labelListNews.at(labelCounter)->setTextFormat(Qt::RichText);
+            m_labelListNews.at(labelCounter)->setWordWrap(true);
+            m_labelListNews.at(labelCounter)->setFont(QFont("Comic Sans MS",10));
+        }
+    }
 }
 
 
 void MainWindow::httpFinished(){
 
-    waitForRefresh = false;
-    QByteArray receivedData =  reply->readAll();
+    m_waitForRefresh = false;
+    QByteArray receivedData =  m_reply->readAll();
     QString receivedDataString(receivedData);
 
     //ui->textEditDates->setText(receivedDataString);
 
 
-    switch(currentModuleRefresh)
+
+    if(m_httpModules.at(m_currentHttpModule).compare("weather")== 0)
     {
-    case weather:
-    parseXML(receivedData);
-
-
-        break;
-
-    case news:
-
+        parseWeather(receivedData);
+    }
+    else if(m_httpModules.at(m_currentHttpModule).compare("news")== 0)
+    {
         parseNews(receivedData);
-        break;
     }
 
-    if(currentModuleRefresh == count-1)
+
+    if(m_currentHttpModule >= m_httpModules.size()-1)
     {
-        //go to the first element
-        currentModuleRefresh = weather;
+        //go to the first element in the list
+
+        m_currentHttpModule = 0;
     }
     else
     {
+        m_currentHttpModule++;
 
-        currentModuleRefresh ++;
     }
+
 }
 
 /*
@@ -501,31 +470,53 @@ void MainWindow::on_pushButtonStart_clicked()
 void MainWindow::timerHttpFinished()
 {
 
-    if (waitForRefresh == false)
+    //first check if we wait for an old request before starting a new one
+    if (m_waitForRefresh == false)
     {
-       waitForRefresh = true;
-       QUrl url;
-       switch(currentModuleRefresh)
+        m_waitForRefresh = true;
+        QUrl url;
+
+
+        if(m_httpModules.at(m_currentHttpModule).compare("weather")== 0)
         {
-        case weather:
-             url = QUrl("http://api.wetter.com/forecast/weather/city/DE0007840/project/testqt/cs/99da8a0c7841156f23b9234011fd9ff5");
+            url = QUrl(m_settings.value("weatherUrl"));
             startRequest(url);
+        }
+        else if(m_httpModules.at(m_currentHttpModule).compare("news")== 0)
+        {
 
-            break;
+            QString currentNewsAdressKey = "news" + QString::number(m_newsUrlCounter);
 
-        case news:
+            if(m_settings.contains(currentNewsAdressKey))
+            {
+                url = QUrl(m_settings.value(currentNewsAdressKey));
 
+                m_newsUrlCounter++ ;
 
-            url = QUrl("http://www.spiegel.de/netzwelt/index.rss");
+            }
+            else
+            {
+                //no more news URLs are present, so start at the first url again
+                m_newsUrlCounter =0;
+
+                currentNewsAdressKey = "news" + QString::number(m_newsUrlCounter);
+                url = QUrl(m_settings.value(currentNewsAdressKey));
+
+                //reset the position counter for the ui-position
+                m_newsPositionCounter = 0;
+
+                m_newsUrlCounter++;
+            }
+
             startRequest(url);
-
-            break;
-
-
         }
     }
 
+}
 
+void MainWindow::timerPicturesFinished()
+{
+    showImages();
 }
 
 void MainWindow::parseNews(QByteArray receivedXML)
@@ -539,69 +530,128 @@ void MainWindow::parseNews(QByteArray receivedXML)
 
     if(channelElement.isNull())
     {
-       // ui->textEditDates->append("error");
+        // ui->textEditDates->append("error");
     }
 
     //loop through all date-child nodes
     QDomElement currentNewsElement = channelElement.firstChildElement("item");
 
 
-    int counter = 0;
+    int counter = 0; //counter for one news url
+
     while(!currentNewsElement.isNull())
     {
-
+        //get the nes title
         QString newsTitle = currentNewsElement.firstChildElement("title").text();
 
-        QLabel *tempLabel = new QLabel(this);
-        tempLabel->setStyleSheet("QLabel { color: white; font-weight: bold; font-size: 14pt }");
-        tempLabel->setTextFormat(Qt::RichText);
 
-        tempLabel->setText(newsTitle);
+        m_labelListNews.at(m_newsPositionCounter)->setText(newsTitle);
+        m_newsPositionCounter ++;
 
-        ui->gridLayoutNews->addWidget(tempLabel,counter,0,1,1);
-
+        //get the news-message of the news
         QString newsContent = currentNewsElement.firstChildElement("description").text();
 
-        counter ++;
-        QLabel *tempLabel2 = new QLabel(this);
-        tempLabel2->setStyleSheet("QLabel { color: white; font-size: 10pt }");
-        tempLabel2->setTextFormat(Qt::RichText);
-        tempLabel2->setWordWrap(true);
-        tempLabel2->setFont(QFont("Comic Sans MS",10));
+        m_labelListNews.at(m_newsPositionCounter)->setText(newsContent);
+        m_newsPositionCounter ++;
 
-        tempLabel2->setText(newsContent);
+        //get the next element
+        currentNewsElement =  currentNewsElement.nextSiblingElement("item");
 
-        ui->gridLayoutNews->addWidget(tempLabel2,counter,0,1,1);
+        //if(counter >= (m_settings.value("newsAmount").toInt())*2 )
 
-
-//        labelList.at(labelCounter)->setText(curentDayStringRich);
-//        labelCounter++;
-
-//        //set the text over the icons
-//        labelList.at(labelCounter)->setText("Vormittag:<br>" + weatherText11);
-//        labelCounter++;
-
-//        labelList.at(labelCounter)->setText("Nachmittag:<br>" + weatherText17);
-//        labelCounter++;
-
-//        QFile *testFile =new QFile("://icons/d_0_L.png");
-//        bool test = testFile->exists();
-
-//        //set the icons
-//        labelList.at(labelCounter)->setPixmap(QPixmap(":/d/icons/d_" + weatherState11 + "_L.png").scaled(QSize(60,60),Qt::KeepAspectRatio));
-//        labelCounter++;
-//        labelList.at(labelCounter)->setPixmap(QPixmap(":/n/icons/n_" + weatherState17 + "_L.png").scaled(QSize(60,60),Qt::KeepAspectRatio));
-
-//        labelCounter++;
-//        //get the next element
-      currentNewsElement =  currentNewsElement.nextSiblingElement("item");
-      counter ++;
-
-      if(counter > 9)
-      {
-          break;
-      }
+        //check if the maximum amount of news-topics is reached
+        if(counter >= (m_settings.value("newsAmount").toInt()-1))
+        {
+            break;
+        }
+        else
+        {
+            counter++;
+        }
     }
+}
+
+void MainWindow::showImages()
+{
+
+    QPixmap frameOverlay = QPixmap(":/i/icons/frame2.png");
+
+    QPixmap currentPic;
+
+
+    if(m_currentPicCounter > m_picturePaths.count()-1)
+    {
+        //start with the first picture again
+        m_currentPicCounter  = 0;
+    }
+
+    currentPic.load(m_picturePaths.at(m_currentPicCounter));
+    m_currentPicCounter++;
+
+    currentPic = currentPic.scaled(QSize(260,260),Qt::KeepAspectRatio);
+
+    frameOverlay = frameOverlay.scaled(QSize(currentPic.width(), currentPic.height()),Qt::IgnoreAspectRatio);
+
+    QPixmap result(currentPic.width(), currentPic.height());
+    result.fill(Qt::transparent); // force alpha channel
+
+    QPainter painter(&result);
+    painter.drawPixmap(0,0, currentPic);
+    painter.drawPixmap(0,0,frameOverlay);
+
+    ui->labelPicture->setPixmap(result);
+
+}
+
+void MainWindow::readIniFile()
+{
+
+    QString pathToIniFile = QDir::currentPath();
+
+    pathToIniFile.append("/settings.ini");
+
+
+    QSettings settings(pathToIniFile, QSettings::IniFormat);
+
+    //go through all groups
+    const QStringList groups = settings.childGroups();
+    foreach(const QString &childGroup, groups)
+    {
+        qDebug() << "group:" <<childGroup;
+        settings.beginGroup(childGroup);
+        //go through all keys in the group
+        const QStringList childKeys = settings.childKeys();
+        foreach (const QString &childKey, childKeys)
+        {
+            qDebug() <<childKey <<":" << settings.value(childKey).toString();
+            //save the settings in the settings hash
+            m_settings.insert(childKey, settings.value(childKey).toString());
+        }
+        settings.endGroup();
+
+    }
+}
+
+void MainWindow::readImageFiles()
+{
+    //read the images from the folder specified in the .ini file
+    QStringList nameFilter;
+    nameFilter << "*.jpg" << "*.jpeg" << "*.bmp" << "*.png";
+    QDir directory(m_settings.value("imagesFolder"));
+
+    directory.setNameFilters(nameFilter);
+
+    QFileInfoList tempFileInfoList =  directory.entryInfoList();
+
+    foreach (QFileInfo tempFileInfo, tempFileInfoList)
+    {
+
+        m_picturePaths.append(tempFileInfo.absoluteFilePath());
+
+    }
+
+    //set the image counter
+    m_currentPicCounter =0;
 }
 
 void MainWindow::timerTimeFinished()
@@ -609,15 +659,16 @@ void MainWindow::timerTimeFinished()
     QTime tempCurrentTime =  QTime::currentTime();
 
     ui->labelTime->setText(QString::number(tempCurrentTime.hour()) + ":" );
-    if(tempCurrentTime.second() < 10)
+    if(tempCurrentTime.minute() < 10)
     {
-            ui->labelTime->setText(ui->labelTime->text() + "0"+ QString::number(tempCurrentTime.minute()));
+        ui->labelTime->setText(ui->labelTime->text() + "0"+ QString::number(tempCurrentTime.minute()));
 
     }
     else
     {
-            ui->labelTime->setText(ui->labelTime->text() +  QString::number(tempCurrentTime.minute()));
+        ui->labelTime->setText(ui->labelTime->text() +  QString::number(tempCurrentTime.minute()));
 
     }
+
 }
 

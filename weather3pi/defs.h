@@ -1,12 +1,12 @@
 #ifndef DEFS_H
 #define DEFS_H
 
-typedef enum currentModule{
-    weather = 0,
-    news,
-    count,
+//typedef enum currentModule{
+//    weather = 0,
+//    news,
+//    count,
 
-};
+//};
 
 
 

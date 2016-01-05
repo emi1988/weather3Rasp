@@ -25,4 +25,5 @@ FORMS    += mainwindow.ui
 
 RESOURCES += \
     nightPicturesRes.qrc \
-    dayPicturesRes.qrc
+    dayPicturesRes.qrc \
+    iconsRes.qrc
