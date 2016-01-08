@@ -9,12 +9,24 @@
 #include <QLabel>
 #include <QFile>
 #include <QTime>
+#include <QWebView>
+
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
 {
     readIniFile();
+
+    m_networkAccesManager = new QNetworkAccessManager(this);
+
+   //TEST
+//    QUrl url = QUrl("http://api.wetter.com/forecast/weather/city/DE0007840/project/testqt/cs/99da8a0c7841156f23b9234011fd9ff5");
+//    startRequest(url,"NewsWeather");
+
+    //QUrl url2 = QUrl("http://www.tagesschau.de/export/video-podcast/tagesschau-in-100-sekunden/");
+    QUrl url2 = QUrl("http://www.tagesschau.de/export/video-podcast/webm/tagesschau-in-100-sekunden/");
+    startRequest(url2, "videoPodcast");
 
     ui->setupUi(this);
     ui->centralWidget->setStyleSheet("background-color:black;");
@@ -33,6 +45,12 @@ MainWindow::MainWindow(QWidget *parent) :
     {
         m_httpModules.append("weather");
     }
+    if(m_settings.value("uiVideoPodcast").compare("1")== 0)
+    {
+
+    }
+
+
     if(m_settings.value("uiNews").compare("1")== 0)
     {
         //check if at least one (respectively the first news-url) is set
@@ -83,11 +101,22 @@ MainWindow::MainWindow(QWidget *parent) :
     }
 }
 
-void MainWindow::startRequest(QUrl url)
+void MainWindow::startRequest(QUrl url, QString sender)
 {
-    m_reply = m_networkAccesManager.get(QNetworkRequest(url));
 
-    connect(m_reply, SIGNAL(finished()), this , SLOT(httpFinished()));
+    if(sender.compare("NewsWeather") == 0)
+    {
+        m_reply = m_networkAccesManager->get(QNetworkRequest(url));
+
+        connect(m_reply, SIGNAL(finished()), this , SLOT(httpFinished()));
+    }
+    if(sender.compare("videoPodcast")== 0)
+    {
+        // m_replyVideoPodcast = m_networkAccesManagerVideoPodcast.get(QNetworkRequest(url));
+        m_replyVideoPodcast = m_networkAccesManager->get(QNetworkRequest(url));
+
+        connect(m_replyVideoPodcast, SIGNAL(finished()), this , SLOT(videoPodcastFinished()));
+    }
 
 }
 MainWindow::~MainWindow()
@@ -426,9 +455,16 @@ void MainWindow::generateLabels()
 
 void MainWindow::httpFinished(){
 
+
+//    QNetworkReply *reply = qobject_cast(sender());
+//    QByteArray receivedData =  reply->readAll();
+//    QString receivedDataString(receivedData);
+
+
     m_waitForRefresh = false;
     QByteArray receivedData =  m_reply->readAll();
     QString receivedDataString(receivedData);
+
 
     //ui->textEditDates->setText(receivedDataString);
 
@@ -458,6 +494,18 @@ void MainWindow::httpFinished(){
 
 }
 
+void MainWindow::videoPodcastFinished()
+{
+    qDebug() << "Video Podcast Url received:";
+
+   // QNetworkReply *reply = qobject_cast(sender());
+    QByteArray receivedData =  m_replyVideoPodcast->readAll();
+    QString receivedDataString(receivedData);
+    qDebug() << receivedDataString;
+
+    parseVideoPodcast(receivedData);
+}
+
 /*
 void MainWindow::on_pushButtonStart_clicked()
 {
@@ -480,7 +528,7 @@ void MainWindow::timerHttpFinished()
         if(m_httpModules.at(m_currentHttpModule).compare("weather")== 0)
         {
             url = QUrl(m_settings.value("weatherUrl"));
-            startRequest(url);
+            startRequest(url,"NewsWeather");
         }
         else if(m_httpModules.at(m_currentHttpModule).compare("news")== 0)
         {
@@ -508,7 +556,7 @@ void MainWindow::timerHttpFinished()
                 m_newsUrlCounter++;
             }
 
-            startRequest(url);
+            startRequest(url,"NewsWeather");
         }
     }
 
@@ -517,6 +565,47 @@ void MainWindow::timerHttpFinished()
 void MainWindow::timerPicturesFinished()
 {
     showImages();
+}
+
+void MainWindow::parseVideoPodcast(QByteArray receivedXML)
+{
+    QDomDocument domDoc;
+
+    domDoc.setContent(receivedXML);
+
+    QDomElement rssElement = domDoc.namedItem("rss").toElement();
+    QDomElement chanelElement = rssElement.firstChildElement("channel");
+    QDomElement itemElement = chanelElement.firstChildElement("item");
+    QDomElement enclosureElement = itemElement.firstChildElement("enclosure");
+
+
+    if(rssElement.isNull())
+    {
+        qDebug() << "error parsing podcast";
+    }
+
+
+    m_videoPodscastUrl = enclosureElement.attribute("url", "null");
+
+
+
+    //show the current videoPodcast
+    showVideoPodcast();
+
+}
+
+void MainWindow::showVideoPodcast()
+{
+
+    QString htmlPage = "<html lang='de-de'><head><title>Test</title></head>\n\n\n<body>\n\n<video src='";
+    //QString htmlPage = "<html lang=\"de-de\"><head><title>Test</title></head><body><video src=\"";
+    htmlPage.append(m_videoPodscastUrl);
+    htmlPage.append("' width='320' height='240' autoplay>\n\n</video>\n\n</body></html>\n");
+
+
+    ui->webViewPodcast->setHtml(htmlPage);
+    ui->webViewPodcast->show();
+
 }
 
 void MainWindow::parseNews(QByteArray receivedXML)
@@ -528,9 +617,9 @@ void MainWindow::parseNews(QByteArray receivedXML)
     QDomElement rssElement = domDoc.namedItem("rss").toElement();
     QDomElement channelElement = rssElement.firstChildElement("channel");
 
-    if(channelElement.isNull())
+    if(rssElement.isNull())
     {
-        // ui->textEditDates->append("error");
+        qDebug() << "error parsing news";
     }
 
     //loop through all date-child nodes
@@ -570,6 +659,7 @@ void MainWindow::parseNews(QByteArray receivedXML)
         }
     }
 }
+
 
 void MainWindow::showImages()
 {

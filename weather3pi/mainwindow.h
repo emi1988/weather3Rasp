@@ -20,7 +20,7 @@ class MainWindow : public QMainWindow
 
 public:
     explicit MainWindow(QWidget *parent = 0);
-    void startRequest(QUrl url);
+    void startRequest(QUrl url, QString sender);
 
 
     ~MainWindow();
@@ -30,6 +30,8 @@ private:
     void generateLabels();
     void parseWeather(QByteArray receivedXML);
     void parseNews(QByteArray receivedXML);
+    void parseVideoPodcast(QByteArray receivedXML);
+    void showVideoPodcast();
     void showImages();
     void readIniFile();
     void readImageFiles();
@@ -43,8 +45,11 @@ private:
     //QList<QLabel *> day2Labels;
     //QList<QLabel *> day3Labels;
 
-    QNetworkAccessManager m_networkAccesManager;
+    QNetworkAccessManager *m_networkAccesManager;
     QNetworkReply *m_reply;
+    QNetworkReply *m_replyVideoPodcast;
+
+    QString m_videoPodscastUrl;
 
     QHash<QString, QString> m_settings;
     QStringList m_picturePaths;
@@ -61,6 +66,7 @@ private:
 private slots:
 
     void httpFinished();
+    void videoPodcastFinished();
     void timerTimeFinished();
     void timerHttpFinished();
     void timerPicturesFinished();
