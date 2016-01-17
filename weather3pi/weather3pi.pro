@@ -20,12 +20,10 @@ TEMPLATE = app
 
 
 SOURCES += main.cpp\
-        mainwindow.cpp \
-    interrupts.cpp
+        mainwindow.cpp
 
 HEADERS  += mainwindow.h \
-    defs.h \
-    interrupts.h
+    defs.h
 
 FORMS    += mainwindow.ui
 
