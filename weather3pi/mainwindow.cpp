@@ -9,7 +9,7 @@
 #include <QLabel>
 #include <QFile>
 #include <QTime>
-#include <QWebView>
+//#include <QWebView>
 
 
 MainWindow::MainWindow(QWidget *parent) :
@@ -597,14 +597,37 @@ void MainWindow::parseVideoPodcast(QByteArray receivedXML)
 void MainWindow::showVideoPodcast()
 {
 
-    QString htmlPage = "<html lang='de-de'><head><title>Test</title></head>\n\n\n<body>\n\n<video src='";
-    //QString htmlPage = "<html lang=\"de-de\"><head><title>Test</title></head><body><video src=\"";
-    htmlPage.append(m_videoPodscastUrl);
-    htmlPage.append("' width='320' height='240' autoplay>\n\n</video>\n\n</body></html>\n");
+    //generate the command to start the omxPlayer
+    QString omxPlayerCommand = "omxplayer -o hdmi" +  m_videoPodscastUrl + "--win \"";
+    omxPlayerCommand.append(m_settings.value("omxTopLeftCornerX")+ " ");
+    omxPlayerCommand.append(m_settings.value("omxTopLeftCornerY")+ " ");
+
+    int rightBottomCornerX = m_settings.value("omxTopLeftCornerX").toInt()+ m_settings.value("omxTopLeftCornerWidth").toInt();
+    int rightBottomCornerY = m_settings.value("omxTopLeftCornerY").toInt()+ m_settings.value("omxTopLeftCornerHeight").toInt();
 
 
-    ui->webViewPodcast->setHtml(htmlPage);
-    ui->webViewPodcast->show();
+    omxPlayerCommand.append(QString::number(rightBottomCornerX)+ " ");
+    omxPlayerCommand.append(QString::number(rightBottomCornerY)+ "\"");
+
+
+    QProcess p;
+
+    p.start(omxPlayerCommand);
+
+
+   // p.terminate();
+    //p.kill();
+
+    p.waitForFinished(-1);
+
+
+    QString pStdout = p.readAllStandardOutput();
+    QString pStdErr = p.readAllStandardError();
+
+    qDebug() << pStdout << pStdErr;
+
+    p.kill();
+
 
 }
 

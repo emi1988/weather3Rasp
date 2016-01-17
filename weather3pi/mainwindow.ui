@@ -89,21 +89,6 @@
     <item>
      <layout class="QVBoxLayout" name="verticalLayout_2">
       <item>
-       <widget class="QWebView" name="webViewPodcast">
-        <property name="maximumSize">
-         <size>
-          <width>400</width>
-          <height>300</height>
-         </size>
-        </property>
-        <property name="url">
-         <url>
-          <string>about:blank</string>
-         </url>
-        </property>
-       </widget>
-      </item>
-      <item>
        <spacer name="verticalSpacer_4">
         <property name="orientation">
          <enum>Qt::Vertical</enum>
@@ -135,13 +120,6 @@
   </widget>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
- <customwidgets>
-  <customwidget>
-   <class>QWebView</class>
-   <extends>QWidget</extends>
-   <header>QtWebKitWidgets/QWebView</header>
-  </customwidget>
- </customwidgets>
  <resources/>
  <connections/>
 </ui>
