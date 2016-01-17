@@ -25,8 +25,8 @@ MainWindow::MainWindow(QWidget *parent) :
 //    startRequest(url,"NewsWeather");
 
     //QUrl url2 = QUrl("http://www.tagesschau.de/export/video-podcast/tagesschau-in-100-sekunden/");
-    QUrl url2 = QUrl("http://www.tagesschau.de/export/video-podcast/webm/tagesschau-in-100-sekunden/");
-    startRequest(url2, "videoPodcast");
+    QUrl urlVideopodcast = QUrl(m_settings.value("videoPodcastUrl"));
+    startRequest(urlVideopodcast, "videoPodcast");
 
     ui->setupUi(this);
     ui->centralWidget->setStyleSheet("background-color:black;");
