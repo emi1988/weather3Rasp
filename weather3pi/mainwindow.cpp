@@ -598,7 +598,7 @@ void MainWindow::showVideoPodcast()
 {
 
     //generate the command to start the omxPlayer
-    QString omxPlayerCommand = "omxplayer -o hdmi" +  m_videoPodscastUrl + "--win \"";
+    QString omxPlayerCommand = "omxplayer -o hdmi " +  m_videoPodscastUrl + " --win \"";
     omxPlayerCommand.append(m_settings.value("omxTopLeftCornerX")+ " ");
     omxPlayerCommand.append(m_settings.value("omxTopLeftCornerY")+ " ");
 
@@ -608,12 +608,15 @@ void MainWindow::showVideoPodcast()
 
     omxPlayerCommand.append(QString::number(rightBottomCornerX)+ " ");
     omxPlayerCommand.append(QString::number(rightBottomCornerY)+ "\"");
-
+    qDebug() << "OmxPLayer Command: " << omxPlayerCommand;
 
     QProcess p;
 
     p.start(omxPlayerCommand);
 
+    p.close();
+
+    //p.kill();
 
    // p.terminate();
     //p.kill();
@@ -627,6 +630,8 @@ void MainWindow::showVideoPodcast()
     qDebug() << pStdout << pStdErr;
 
     p.kill();
+
+
 
 
 }
