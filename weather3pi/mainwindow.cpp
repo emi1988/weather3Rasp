@@ -18,7 +18,6 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     readIniFile();
 
-
     m_networkAccesManager = new QNetworkAccessManager(this);
 
    //TEST
