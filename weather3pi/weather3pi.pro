@@ -20,10 +20,12 @@ TEMPLATE = app
 
 
 SOURCES += main.cpp\
-        mainwindow.cpp
+        mainwindow.cpp \
+    gpiocontrol.cpp
 
 HEADERS  += mainwindow.h \
-    defs.h
+    defs.h \
+    gpiocontrol.h
 
 FORMS    += mainwindow.ui
 

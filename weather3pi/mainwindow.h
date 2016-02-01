@@ -8,6 +8,8 @@
 #include <QUrl>
 #include <QLabel>
 
+#include <gpiocontrol.h>
+
 
 
 namespace Ui {
@@ -27,6 +29,9 @@ public:
 
 private:
     Ui::MainWindow *ui;
+    gpioControl *myGpioControl;
+    bool videoRequested;
+
     void generateLabels();
     void parseWeather(QByteArray receivedXML);
     void parseNews(QByteArray receivedXML);
@@ -72,7 +77,7 @@ private slots:
     void timerPicturesFinished();
     //void httpReadyRead();
     //void on_pushButtonStart_clicked();
-
+    void gpioChanged(int pin);
 
 };
 

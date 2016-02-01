@@ -9,7 +9,8 @@
 #include <QLabel>
 #include <QFile>
 #include <QTime>
-//#include <QWebView>
+#include <QThread>
+#include <QTimer>
 
 
 MainWindow::MainWindow(QWidget *parent) :
@@ -18,6 +19,7 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     readIniFile();
 
+    videoRequested = false;
 
     m_networkAccesManager = new QNetworkAccessManager(this);
 
@@ -26,8 +28,7 @@ MainWindow::MainWindow(QWidget *parent) :
 //    startRequest(url,"NewsWeather");
 
     //QUrl url2 = QUrl("http://www.tagesschau.de/export/video-podcast/tagesschau-in-100-sekunden/");
-    QUrl urlVideopodcast = QUrl(m_settings.value("videoPodcastUrl"));
-    startRequest(urlVideopodcast, "videoPodcast");
+
 
     ui->setupUi(this);
     ui->centralWidget->setStyleSheet("background-color:black;");
@@ -98,6 +99,33 @@ MainWindow::MainWindow(QWidget *parent) :
             connect(imagesTimer, SIGNAL(timeout()), this, SLOT(timerPicturesFinished()));
             imagesTimer->start(m_settings.value("slideShowTime").toInt());
         }
+
+    }
+
+    //check the activation of the gpios
+    if(m_settings.value("activateGpios").compare("1")== 0)
+    {
+        myGpioControl = new gpioControl();
+
+
+        QList<int> inputPins;
+
+        inputPins <<4 << 17 << 22 << 27;
+        myGpioControl->GPIOInitInputs(inputPins);
+
+        QThread *t = new QThread();
+        QTimer *gpioTimer = new QTimer();
+
+        QObject::connect(gpioTimer, SIGNAL(timeout()), myGpioControl, SLOT(checkGpio()));
+        //QObject::connect(gpioTimer, SIGNAL(timeout()), this, SLOT(test()));
+
+        QObject::connect(myGpioControl, SIGNAL(gpioInputChanged(int)), this, SLOT(gpioChanged(int)));
+
+        gpioTimer->start(m_settings.value("gpioRefresh").toInt());
+
+        myGpioControl->moveToThread(t);
+
+        t->start();
 
     }
 }
@@ -599,7 +627,10 @@ void MainWindow::showVideoPodcast()
 {
 
     //generate the command to start the omxPlayer
-    QString omxPlayerCommand = "omxplayer -o hdmi " +  m_videoPodscastUrl + " --win \"";
+
+    //hdmi audio output:
+     QString omxPlayerCommand = "omxplayer -o local " +  m_videoPodscastUrl + " --win \"";
+   // QString omxPlayerCommand = "omxplayer -o hdmi " +  m_videoPodscastUrl + " --win \"";
     omxPlayerCommand.append(m_settings.value("omxTopLeftCornerX")+ " ");
     omxPlayerCommand.append(m_settings.value("omxTopLeftCornerY")+ " ");
 
@@ -615,7 +646,7 @@ void MainWindow::showVideoPodcast()
 
     p.start(omxPlayerCommand);
 
-    p.close();
+    //p.close();
 
     //p.kill();
 
@@ -631,6 +662,8 @@ void MainWindow::showVideoPodcast()
     qDebug() << pStdout << pStdErr;
 
     p.kill();
+
+    videoRequested = false;
 
 
 
@@ -789,5 +822,24 @@ void MainWindow::timerTimeFinished()
 
     }
 
+}
+void MainWindow::gpioChanged(int pin)
+{
+
+    qDebug() << "Gpio pin: " << QString::number(pin) << " high signal";
+
+    if(pin ==4)
+    {
+        if(videoRequested == false)
+        {
+            videoRequested =true;
+
+
+            QUrl urlVideopodcast = QUrl(m_settings.value("videoPodcastUrl"));
+            startRequest(urlVideopodcast, "videoPodcast");
+
+        }
+
+    }
 }
 
